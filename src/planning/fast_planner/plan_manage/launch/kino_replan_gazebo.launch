@@ -1,0 +1,87 @@
+<launch>
+  <!-- size of map, change the size in x, y, z according to your application -->
+  <arg name="map_size_x" value="40.0"/>
+  <arg name="map_size_y" value="40.0"/>
+  <arg name="map_size_z" value="10.0"/>
+
+  <!-- topic of your odometry such as VIO 视觉惯性里程计 or LIO 激光雷达惯性里程计 -->
+  <arg name="odom_topic" value="/mavros/local_position/odom" />
+  <!-- <arg name="odom_topic" value="/t265/odom/sample" /> -->
+  <!-- <arg name="odom_topic" value="/vins_estimator/odometry" /> -->
+
+
+  <!-- main algorithm params -->                         
+  <include file="$(find plan_manage)/launch/kino_algorithm.xml">
+
+    <arg name="map_size_x_" value="$(arg map_size_x)"/>
+    <arg name="map_size_y_" value="$(arg map_size_y)"/>
+    <arg name="map_size_z_" value="$(arg map_size_z)"/>
+    <arg name="odometry_topic" value="$(arg odom_topic)"/>
+
+    <!-- camera pose: transform of camera frame in the world frame -->
+    <!-- depth topic: depth image, 640x480 by default -->
+    <!-- don't set cloud_topic if you already set these ones! -->
+    <arg name="camera_pose_topic" value="/"/>
+    <arg name="depth_topic" value="/d400/depth/image_rect_raw"/>
+    <!-- <arg name="depth_topic" value="/realsense_plugin/camera/depth/image_raw"/> -->
+    
+    <!-- <arg name="depth_topic" value="/d400/aligned_depth_to_color/image_raw"/> -->
+    <!-- topic of point cloud measurement, such as from LIDAR  -->
+    <!-- don't set camera pose and depth, if you already set this one!   
+    注释以下其中一行，/depth_cloud->从深度图转化来的点云,realsense
+                                             /3Dlidar16_scan对应三维激光雷达
+  <arg name="cloud_topic" value="/3Dlidar16_scan"/>
+
+  /camera/depth/color/points
+
+  /depth_cloud
+   -->
+   
+   <arg name="cloud_topic" value="/d2cloud"/> 
+   <!-- <arg name="cloud_topic" value="/camera/depth/color/points"/>    -->
+
+    <arg name="cx" value="318.73473"/>
+    <arg name="cy" value="240.39711"/>
+    <arg name="fx" value="383.98294"/>
+    <arg name="fy" value="385.08249"/>
+
+    <!-- maximum velocity and acceleration the drone will reach -->
+    <arg name="max_vel" value="2.0" />
+    <arg name="max_acc" value="1.0" />
+
+    <!-- 1: use 2D Nav Goal to select goal  -->
+    <!-- 2: use global waypoints below  -->
+    <arg name="flight_type" value="1" />
+    
+    <!-- global waypoints -->
+    <!-- If flight_type is set to 2, the drone will travel these waypoints one by one -->
+    <!-- <arg name="point_num" value="3" />
+
+    <arg name="point0_x" value="15.0"/>
+    <arg name="point0_y" value="0.0" />
+    <arg name="point0_z" value="1.0"/>
+
+    <arg name="point1_x" value="15.0" />
+    <arg name="point1_y" value="-15.0" />
+    <arg name="point1_z" value="1.0" />
+
+    <arg name="point2_x" value="0.0" />
+    <arg name="point2_y" value="0.0" />
+    <arg name="point2_z" value="1.0" />
+
+    <arg name="point3_x" value="0" />
+    <arg name="point3_y" value="0" />
+    <arg name="point3_z" value="1.0" /> -->
+    
+  </include>
+
+  <!-- trajectory server -->
+  <node pkg="plan_manage" name="traj_server" type="traj_server" output="screen">
+    <remap from="/position_cmd" to="planning/pos_cmd"/>
+
+    <remap from="/odom_world" to="$(arg odom_topic)"/>
+    <param name="traj_server/time_forward" value="1.5" type="double"/>
+  </node>
+
+
+</launch>

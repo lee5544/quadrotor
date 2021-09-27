@@ -1,0 +1,18 @@
+<launch>
+<!-- 只能在一个终端启动这些节点 -->
+
+    <!-- 启动双目深度 -->
+
+    <!-- 启动mission -->
+    <include file="$(find mission)/launch/mission_sample.launch">
+    </include>
+
+    <!-- 启动px4_bridge -->
+    <include file="$(find px4_bridge)/launch/px4_bridge.launch">
+    </include>
+
+    <!-- 启动规划 -->
+    <include file="$(find plan_manage)/launch/kino_replan_gazebo.launch">
+    </include>
+
+</launch>

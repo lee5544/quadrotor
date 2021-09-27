@@ -1,7 +1,7 @@
 <launch>
   <!-- size of map, change the size in x, y, z according to your application -->
-  <arg name="map_size_x" value="2000.0"/>
-  <arg name="map_size_y" value="2000.0"/>
+  <arg name="map_size_x" value="80.0"/>
+  <arg name="map_size_y" value="80.0"/>
   <arg name="map_size_z" value="10.0"/>
 
   <!-- topic of your odometry such as VIO 视觉惯性里程计 or LIO 激光雷达惯性里程计 -->
@@ -22,8 +22,8 @@
     <!-- depth topic: depth image, 640x480 by default -->
     <!-- don't set cloud_topic if you already set these ones! -->
     <arg name="camera_pose_topic" value="/"/>
-    <arg name="depth_topic" value="/d400/depth/image_rect_raw"/>
-    <!-- <arg name="depth_topic" value="/realsense_plugin/camera/depth/image_raw"/> -->
+    <!-- <arg name="depth_topic" value="/d400/depth/image_rect_raw"/> -->
+    <arg name="depth_topic" value="/realsense_plugin/camera/depth/image_raw"/>
     
     <!-- <arg name="depth_topic" value="/d400/aligned_depth_to_color/image_raw"/> -->
     <!-- topic of point cloud measurement, such as from LIDAR  -->
