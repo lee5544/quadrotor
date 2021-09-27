@@ -1,0 +1,18 @@
+<!-- 启动与PX4交互的节点 -->
+<!-- 1. 发送轨迹点命令至PX4 -->
+<!-- 2. 从PX4中读取无人机位姿和状态 -->
+<!-- 4. 选择是否发送外部位姿至PX4，主要针对VIO -->
+
+<launch>
+	<node pkg="px4_bridge" type="commandToFcu_node" name="commandToFcu_node" output="screen">
+	</node>
+
+	<node pkg="px4_bridge" type="statesFromFcu_node" name="statesFromFcu_node" output="screen">
+	</node>
+
+	<!-- 读取px4状态；发送PX4控制指令；读取外部姿态发送至PX4（可选） -->
+    <node pkg="px4_bridge" type="statesToFcu_node" name="statesToFcu_node" output="screen">
+		<param name="input_source"      value="t265"/>
+	</node>   
+
+</launch>
