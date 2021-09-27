@@ -1,65 +1,44 @@
 # quadrotor
 
-## px4_bridge
+## 设计框架
 
-连接px4飞控，读取状态和发送期望指令
+<img src="/image/程序设计.jpg" alt="程序设计" style="zoom:25%;" />
 
-- 节点CommandToFcu
+## 实际程序执行-以missionSample为例
 
-- 节点StatesFromFcu
+- 运行px4_bridge
 
-- 节点StatesToFcu
+  ```bash
+  roslaunch px4_bridge px4_bridge.launch
+  ```
 
-# 启动说明
+- 运行realsense和感知模块
 
-1. 启动感知模块
+  ```bash
+  roslaunch realsen2_camera rs_camera.launch
+  ……
+  ```
 
-   - 启动realsense节点
+- 运行规划模块
 
-     - ```bash
-       roslaunch realsense2_camera rs_camera.launch
-       ```
+  ```bash
+  roslaunch plan_manage kino_replan_gazebo.launch
+  ```
 
-   - 启动单目深度估计节点
+- 运行任务模块
 
-2. 启动px4_bridge
+  ```bash
+  roslaunch mission mission_sample.launch
+  ```
 
-   - 启动mavros节点
+  
 
-   - 启动command_to_fcu节点
+## 仿真程序执行-以missionSample为例
 
-   - 启动states_from_fcu节点
+- 一键启动
 
-   - 启动states_to_fcu节点
+  ```BASH 
+  ./Simulator/sitl_sh/gazebo_outdoor.sh
+  ```
 
-   - ```bash
-     roslaunch px4_bridge px4_bridge.launch
-     ```
-
-3. 启动规划模块
-
-   - fastplanner
-
-   - ```bash
-     roslaunch plan_manager kino_replan_gazebo.launch
-     ```
-
-4. 启动mission
-
-   - ```bash
-     rosrun mission mymission
-     ```
-
-
-
-# 命名规范
-
-原则：驼峰，下划线
-
-- class名：首字母大写
-- 实例化的class名：首字母小写
-
-- 类中的全局变量：pos_
-- 局部变量：pos
-
-- 全局变量：POS
+  
