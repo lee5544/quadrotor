@@ -4,6 +4,8 @@
 
 <img src="/image/程序设计.jpg" alt="程序设计" style="zoom:25%;" />
 
+## 编译和运行
+见/wiki/安装和编译.md
 ## 实际程序执行-以missionSample为例
 
 - 运行px4_bridge
