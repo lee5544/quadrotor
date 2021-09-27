@@ -1,0 +1,29 @@
+<!-- 启动与PX4交互的节点 -->
+<!-- 1. 发送轨迹点命令至PX4 -->
+<!-- 2. 从PX4中读取无人机位姿和状态 -->
+<!-- 3. 启动mavros节点 -->
+<!-- 4. 选择是否发送外部位姿至PX4，主要针对t265 -->
+<launch>
+	<!-- 启动MAVROS -->
+	<!-- 不同机载电脑,注意修改fcu_url至正确的端口号及波特率 -->
+	<node pkg="mavros" type="mavros_node" name="mavros" output="screen">
+		<!-- 不同机载电脑,注意修改fcu_url至正确的端口号及波特率 -->
+		<param name="fcu_url" value="/dev/ttyUSB0:921600" />
+		<param name="gcs_url" value="tcp-l://0.0.0.0:5760" />
+		<param name="target_system_id" value="1" />
+		<param name="target_component_id" value="1" />
+		<rosparam command="load" file="$(find px4_bridge)/config/mavros_config/px4_pluginlists.yaml" />
+		<rosparam command="load" file="$(find px4_bridge)/config/mavros_config/px4_config.yaml" />
+	</node> 
+
+	<node pkg="px4_bridge" type="commandToFcu_node" name="commandToFcu_node" output="screen">
+	</node>
+
+	<node pkg="px4_bridge" type="statesFromFcu_node" name="statesFromFcu_node" output="screen">
+	</node>
+
+    <!-- <node pkg="px4_bridge" type="statesToFcu_node" name="statesToFcu_node" output="screen">
+		<param name="input_source"      value="t265"/>
+	</node>    -->
+
+</launch>

@@ -1,0 +1,75 @@
+<launch>
+  <!-- size of map, change the size in x, y, z according to your application -->
+  <arg name="map_size_x" value="40.0"/>
+  <arg name="map_size_y" value="40.0"/>
+  <arg name="map_size_z" value="10.0"/>
+
+  <!-- topic of your odometry such as VIO 视觉惯性里程计 or LIO 激光雷达惯性里程计 -->
+  <arg name="odom_topic" value="/vins_estimator/odometry" />
+  <!-- <arg name="odom_topic" value="/vins_estimator/odometry" /> -->
+
+  <!-- main algorithm params -->                         
+  <include file="$(find plan_manage)/launch/kino_algorithm.xml">
+
+    <arg name="map_size_x_" value="$(arg map_size_x)"/>
+    <arg name="map_size_y_" value="$(arg map_size_y)"/>
+    <arg name="map_size_z_" value="$(arg map_size_z)"/>
+    <arg name="odometry_topic" value="$(arg odom_topic)"/>
+
+    <!-- camera pose: transform of camera frame in the world frame -->
+    <!-- depth topic: depth image, 640x480 by default -->
+    <!-- don't set cloud_topic if you already set these ones! -->
+    <arg name="camera_pose_topic" value="/"/>
+    <arg name="depth_topic" value="/camera/aligned_depth_to_infra1/image_raw"/>
+
+    <!-- topic of point cloud measurement, such as from LIDAR  -->
+    <!-- don't set camera pose and depth, if you already set this one!   
+    注释以下其中一行，/depth_cloud->从深度图转化来的点云,realsense
+                                             /3Dlidar16_scan对应三维激光雷达
+  <arg name="cloud_topic" value="/3Dlidar16_scan"/>
+
+  /camera/depth/color/points
+
+  /depth_cloud
+   -->
+   
+   <arg name="cloud_topic" value="/d2cloud"/> 
+   <!-- <arg name="cloud_topic" value="/camera/depth/color/points"/>    -->
+
+    <!-- intrinsic params of the depth camera -->
+    <arg name="cx" value="323.04638671875"/>
+    <arg name="cy" value="236.44969177246094"/>
+    <arg name="fx" value="385.229248046875"/>
+    <arg name="fy" value="385.229248046875"/>
+
+    <!-- maximum velocity and acceleration the drone will reach -->
+    <arg name="max_vel" value="2.0" />
+    <arg name="max_acc" value="1.5" />
+
+    <!-- 1: use 2D Nav Goal to select goal  -->
+    <!-- 2: use global waypoints below  -->
+    <arg name="flight_type" value="2" />
+    
+    <!-- global waypoints -->
+    <!-- If flight_type is set to 2, the drone will travel these waypoints one by one -->
+    <arg name="point_num" value="4" />
+
+    <arg name="point0_x" value="5.0"/>
+    <arg name="point0_y" value="0" />
+    <arg name="point0_z" value="1.0"/>
+    <!-- set more waypoints if you need -->
+    <arg name="point1_x" value="5.0" />
+    <arg name="point1_y" value="2.0" />
+    <arg name="point1_z" value="1.0" />
+
+    <arg name="point2_x" value="0" />
+    <arg name="point2_y" value="2.0" />
+    <arg name="point2_z" value="1.0" />
+
+    <arg name="point3_x" value="0" />
+    <arg name="point3_y" value="0" />
+    <arg name="point3_z" value="1.0" />
+    
+  </include>
+
+  </launch>
