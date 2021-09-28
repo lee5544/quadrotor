@@ -42,5 +42,5 @@
   ```BASH 
   ./Simulator/sitl_sh/gazebo_outdoor.sh
   ```
-6666
+  666777
   
