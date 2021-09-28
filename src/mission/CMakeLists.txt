@@ -46,7 +46,12 @@ add_executable(polygonMission_node
 target_link_libraries(polygonMission_node
   ${catkin_LIBRARIES})
 
-
+  add_executable(missionRtk_node
+  test/MissionRtk_node.cpp
+  include/MissionRtk.h
+  src/MissionRtk.cpp)
+target_link_libraries(missionRtk_node
+  ${catkin_LIBRARIES})
 # ## Mark cpp header files for installation
 # install(DIRECTORY include/${PROJECT_NAME}/
 #   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}

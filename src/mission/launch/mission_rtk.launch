@@ -1,0 +1,6 @@
+<launch>
+
+  <node pkg="mission" name="missionRtk_node" type="missionRtk_node" output="screen">
+  </node>
+
+</launch>
