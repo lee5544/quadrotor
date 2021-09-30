@@ -22,16 +22,24 @@ void MissionRtk::dronestateCallback(const prometheus_msgs::DroneState::ConstPtr&
     drone_state_ = *msg;
 }
 
-void MissionRtk::homepositionCallback(const sensor_msgs::NavSatFix::ConstPtr& msg)
+void MissionRtk::homepositionCallback(const mavros_msgs::GPSRAW::ConstPtr& msg)
 {
     if(isUpdateHome)//只在需要的时候更新
     {
-        home_lon_ = msg->longitude;
-        home_lat_ = msg->latitude;
+        home_lon_ = double (msg->lon / 10000000.0);
+        home_lat_ = double(msg->lat / 10000000.0);
         isUpdateHome = false;
 
         std::cout << "the home position(lon,lat): " << home_lon_ << ", " <<home_lat_<<std::endl;
     }
+
+    // 测试RTK数据以及转换后的精度，小数点后第5位约表示1m
+    // double lon = double (msg->lon / 10000000.0);
+    // double lat = double(msg->lat / 10000000.0);
+    // std::cout << "the position(lon,lat): " << lon << ", " <<lat;
+    // double tempE, tempN;
+    // rtk2xy( lon, lat, tempE, tempN);//计算经纬度的ENU
+    // std::cout << "      (E,N): " << tempE << ", " <<tempN<<std::endl;
 }
 
 void MissionRtk::init(ros::NodeHandle node)
@@ -41,7 +49,7 @@ void MissionRtk::init(ros::NodeHandle node)
     //【订阅】来自planning的指令
     fastplanner_sub   =   node.subscribe("/prometheus/fast_planner/position_cmd", 50, &MissionRtk::fastplannerCallback, this);
     //【订阅】来自无人机的的全局位置
-    home_postion_sub   =   node.subscribe("/mavros/global_position/global", 10, &MissionRtk::homepositionCallback, this);
+    home_postion_sub   =   node.subscribe("/mavros/gpsstatus/gps1/raw", 10, &MissionRtk::homepositionCallback, this);
     
     // 【发布】发送给控制模块 [px4_pos_controller.cpp]的命令
     command_pub = node.advertise<prometheus_msgs::ControlCommand>("/prometheus/control_command", 10, this);
@@ -102,6 +110,12 @@ void MissionRtk::init(ros::NodeHandle node)
     command_now_.reference_state.yaw_ref             = 0;
 }
 
+/**
+ * @Author:       yong
+ * @description:         mission状态机函数，负责任务分解和组合
+ * @param {*}
+ * @return {*}
+ */
 void MissionRtk::run()
 {
         switch(mission_cmd_){
@@ -202,7 +216,6 @@ void MissionRtk::run()
                 if(isMove == true)//第一次进入move，目标点加上（减去）起点位置
                 {
                     //计算两个点的GPS坐标，进而转换成xyz，算出相对的目标xyz，再加上local的home位置
-                    
                     //对目标点加上Home位置（局部XYZ）——相对
                     //原因：起点位置的xyz，不是000
                     double homeE, homeN;
@@ -323,14 +336,14 @@ void MissionRtk::run()
                 command_pub.publish(command_now_);             
                 break;
             }
-        
         }
 }
 
 /**
  * @Author:       yong
  * @description:         计算gps坐标的UTM坐标
- * @param {*}
+ * @param 
+ *      lon：经度   lat：纬度   UTME：东向坐标  UTMN：北向坐标
  * @return {*}
  */
 void MissionRtk::rtk2xy(double lon, double lat, double& UTME, double& UTMN)

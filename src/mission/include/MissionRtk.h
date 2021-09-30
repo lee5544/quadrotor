@@ -9,6 +9,7 @@
  *      无人机目标点: struct PlannerGoalRTK
  *      无人机轨迹: prometheus_msgs::PositionReference
  *      无人机状态: prometheus_msgs::DroneState
+ *      无人机RTK数值: mavros_msgs::GPSRAW
  *      RTK: 经纬高
  * @Publisher:        
  *      无人机高级控制指令: prometheus_msgs::ControlCommand
@@ -21,7 +22,7 @@
 #include <Eigen/Eigen>
 
 #include <ros/ros.h>
-#include <sensor_msgs/NavSatFix.h>
+#include <mavros_msgs/GPSRAW.h>
 #include <nav_msgs/Path.h>
 
 
@@ -52,7 +53,7 @@ public:
 
     void fastplannerCallback(const prometheus_msgs::PositionReference::ConstPtr& msg);
     void dronestateCallback(const prometheus_msgs::DroneState::ConstPtr& msg);
-    void homepositionCallback(const sensor_msgs::NavSatFix::ConstPtr& msg);
+    void homepositionCallback(const mavros_msgs::GPSRAW::ConstPtr& msg);
 
 private:
     prometheus_msgs::ControlCommand command_now_;                               //发送给控制模块 [px4_pos_controller.cpp]的命令

@@ -43,28 +43,28 @@ void MissionSample::init(ros::NodeHandle node)
     // node.param("point_num", goalsize_, -1);
     //  设置目标点
     //  位置参数，最大速度，最大加速度
-    // PlannerGoal point3;
-    //     point3.point_ << 0,0,takeoff_height_; point3.max_vel_=2; point3.max_acc_=4;
-    //     goalpoints_.push_back(point3);
-    // PlannerGoal point2;
-    //     point2.point_ << 0,10,takeoff_height_; point2.max_vel_=0.5; point2.max_acc_=1;    
-    //     goalpoints_.push_back(point2);
-    // PlannerGoal point1;
-    //     point1.point_ << 10,10,takeoff_height_; point1.max_vel_=1; point1.max_acc_=2;
-    //     goalpoints_.push_back(point1);    
-    // PlannerGoal point0;
-    //     point0.point_ << 10,0,takeoff_height_; point0.max_vel_=0.5; point0.max_acc_=1;
-    //     goalpoints_.push_back(point0);    
-
+    PlannerGoal point3;
+        point3.point_ << 0,0,takeoff_height_; point3.max_vel_=2; point3.max_acc_=4;
+        goalpoints_.push_back(point3);
     PlannerGoal point2;
-        point2.point_ << 20,10,takeoff_height_; point2.max_vel_=2; point2.max_acc_=2;    
+        point2.point_ << 0,10,takeoff_height_; point2.max_vel_=0.5; point2.max_acc_=1;    
         goalpoints_.push_back(point2);
     PlannerGoal point1;
-        point1.point_ << 20,0,takeoff_height_; point1.max_vel_=1; point1.max_acc_=2;
+        point1.point_ << 10,10,takeoff_height_; point1.max_vel_=1; point1.max_acc_=2;
         goalpoints_.push_back(point1);    
     PlannerGoal point0;
-        point0.point_ << 10,0,takeoff_height_; point0.max_vel_=2; point0.max_acc_=2;
+        point0.point_ << 10,0,takeoff_height_; point0.max_vel_=0.5; point0.max_acc_=1;
         goalpoints_.push_back(point0);    
+
+    // PlannerGoal point2;
+    //     point2.point_ << 20,10,takeoff_height_; point2.max_vel_=2; point2.max_acc_=2;    
+    //     goalpoints_.push_back(point2);
+    // PlannerGoal point1;
+    //     point1.point_ << 20,0,takeoff_height_; point1.max_vel_=1; point1.max_acc_=2;
+    //     goalpoints_.push_back(point1);    
+    // PlannerGoal point0;
+    //     point0.point_ << 10,0,takeoff_height_; point0.max_vel_=2; point0.max_acc_=2;
+    //     goalpoints_.push_back(point0);    
 
     goalsize_ = goalpoints_.size();
     // std::cout << goalsize_ << std::endl;
