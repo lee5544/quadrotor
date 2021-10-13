@@ -6,12 +6,12 @@
  * @LastEditTime:        Do not edit
  * @Description:      任务总体流程控制模块。
  * @Subscriber:       
- *      无人机目标点: struct PlannerGoalRTK
  *      无人机轨迹: prometheus_msgs::PositionReference
  *      无人机状态: prometheus_msgs::DroneState
  *      无人机RTK数值: mavros_msgs::GPSRAW
  *      RTK: 经纬高
  * @Publisher:        
+ *      无人机目标点: struct PlannerGoalRTK   nav_msgs/Path
  *      无人机高级控制指令: prometheus_msgs::ControlCommand
  */
 #ifndef MISSIONRTK_H

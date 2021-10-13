@@ -6,10 +6,10 @@
  * @LastEditTime:        Do not edit
  * @Description:      任务总体流程控制模块。
  * @Subscriber:       
- *      无人机目标点: struct PlannerGoal
  *      无人机轨迹: prometheus_msgs::PositionReference
  *      无人机状态: prometheus_msgs::DroneState
- * @Publisher:        
+ * @Publisher:     
+ *      无人机目标点: struct PlannerGoal   nav_msgs/Path
  *      无人机高级控制指令: prometheus_msgs::ControlCommand
  */
 #ifndef MISSIONSAMPLE_H
