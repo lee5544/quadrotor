@@ -42,6 +42,40 @@ void MissionRtk::homepositionCallback(const mavros_msgs::GPSRAW::ConstPtr& msg)
     // std::cout << "      (E,N): " << tempE << ", " <<tempN<<std::endl;
 }
 
+void MissionRtk::mr72ArmingCallback(const can_rec::trigger::ConstPtr& msg)
+{
+    if(msg->flag == 1)//预警，降低速度
+    {
+        isMr72SlowDown = true;
+    }else
+    {
+        isMr72SlowDown = false;
+    }
+
+    nav_msgs::Path path;
+    geometry_msgs::PoseStamped poses;
+    poses.pose.position.x = goal_.point[0];
+    poses.pose.position.y = goal_.point[1];
+    poses.pose.position.z = goal_.point[2];
+    path.poses.push_back(poses);
+
+    poses.pose.position.x = goal_.max_vel;//最大速度
+    poses.pose.position.y = goal_.max_acc;//最大加速度
+    poses.pose.position.z = 0;//最大速度
+    if( isMr72SlowDown)
+    {
+        poses.pose.position.x = 1.0;//最大速度
+        poses.pose.position.y = 1.5;//最大加速度
+        poses.pose.position.z = 0;//最大速度              
+    }    
+    path.poses.push_back(poses);
+    
+    if(useMr72 && goalpoints_.size() > 0)
+    {
+        goal_pub.publish(path);            
+    }
+}
+
 void MissionRtk::init(ros::NodeHandle node)
 {
     //【订阅】无人机当前状态
@@ -92,6 +126,8 @@ void MissionRtk::init(ros::NodeHandle node)
     isHold = false; isMove = false; isUpdateHome = false;
     isSendGoal = true;
     hasPlanningPoints = false;
+
+    useMr72 = true;
 
     // 初始化命令 - Idle模式 电机怠速旋转 等待来自上层的控制指令
     command_now_.mode                                = prometheus_msgs::ControlCommand::idle;
@@ -254,6 +290,7 @@ void MissionRtk::run()
                         poses.pose.position.x = goal_.max_vel;//最大速度
                         poses.pose.position.y = goal_.max_acc;//最大加速度
                         poses.pose.position.z = 0;//最大速度
+
                         path.poses.push_back(poses);
 
                         goal_pub.publish(path);    
@@ -291,13 +328,13 @@ void MissionRtk::run()
                         else//悬停在当前位置
                         {
                             std::cout << "no planning trajectory" << std::endl;
-                            command_now_.header.stamp = ros::Time::now();
-                            command_now_.mode = prometheus_msgs::ControlCommand::move;
-                            // command_now_.reference_state.move_mode  = prometheus_msgs::PositionReference::xyz_yaw;
-                            // command_now_.reference_state.move_mode  = prometheus_msgs::PositionReference::vel_yaw;
-                            command_now_.reference_state.move_mode  = prometheus_msgs::PositionReference::xyz_vel_yaw;
-                            command_now_.reference_state.position_ref =  drone_state_.position;
-                            command_now_.reference_state.yaw_ref = fastplanner_cmd_.yaw_ref;
+                            // command_now_.header.stamp = ros::Time::now();
+                            // command_now_.mode = prometheus_msgs::ControlCommand::move;
+                            // // command_now_.reference_state.move_mode  = prometheus_msgs::PositionReference::xyz_yaw;
+                            // // command_now_.reference_state.move_mode  = prometheus_msgs::PositionReference::vel_yaw;
+                            // command_now_.reference_state.move_mode  = prometheus_msgs::PositionReference::xyz_vel_yaw;
+                            // command_now_.reference_state.position_ref =  drone_state_.position;
+                            // command_now_.reference_state.yaw_ref = fastplanner_cmd_.yaw_ref;
                         }
                     }
 

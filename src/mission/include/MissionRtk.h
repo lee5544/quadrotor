@@ -29,6 +29,7 @@
 #include "prometheus_msgs/ControlCommand.h"
 #include "prometheus_msgs/DroneState.h"
 #include "prometheus_msgs/PositionReference.h"
+#include  "can_rec/trigger.h"
 
 //坐标系：原点时无人机home位置的ENU
 struct PlannerGoalRTK{
@@ -54,6 +55,7 @@ public:
     void fastplannerCallback(const prometheus_msgs::PositionReference::ConstPtr& msg);
     void dronestateCallback(const prometheus_msgs::DroneState::ConstPtr& msg);
     void homepositionCallback(const mavros_msgs::GPSRAW::ConstPtr& msg);
+    void mr72ArmingCallback(const can_rec::trigger::ConstPtr& msg);//MR72接收的预警信息
 
 private:
     prometheus_msgs::ControlCommand command_now_;                               //发送给控制模块 [px4_pos_controller.cpp]的命令
@@ -77,6 +79,8 @@ private:
     bool isHold, isMove, isSendGoal, isUpdateHome;
     bool hasPlanningPoints;
     double holdtime_start, holdtime;
+
+    bool useMr72, isMr72SlowDown;
 
     // double move_start, planning_start;
 

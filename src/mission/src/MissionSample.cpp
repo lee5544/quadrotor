@@ -43,14 +43,15 @@ void MissionSample::init(ros::NodeHandle node)
     // node.param("point_num", goalsize_, -1);
     //  设置目标点
     //  位置参数，最大速度，最大加速度
+    //  降速过程会发生意外
     PlannerGoal point3;
-        point3.point_ << 0,0,takeoff_height_; point3.max_vel_=2; point3.max_acc_=4;
+        point3.point_ << 0,0,takeoff_height_; point3.max_vel_=0.5; point3.max_acc_=1;
         goalpoints_.push_back(point3);
     PlannerGoal point2;
         point2.point_ << 0,10,takeoff_height_; point2.max_vel_=0.5; point2.max_acc_=1;    
         goalpoints_.push_back(point2);
     PlannerGoal point1;
-        point1.point_ << 10,10,takeoff_height_; point1.max_vel_=1; point1.max_acc_=2;
+        point1.point_ << 10,10,takeoff_height_; point1.max_vel_=0.5; point1.max_acc_=1;
         goalpoints_.push_back(point1);    
     PlannerGoal point0;
         point0.point_ << 10,0,takeoff_height_; point0.max_vel_=0.5; point0.max_acc_=1;
@@ -263,13 +264,13 @@ void MissionSample::run()
                         else//悬停在当前位置
                         {
                             std::cout << "no planning trajectory" << std::endl;
-                            Command_Now.header.stamp = ros::Time::now();
-                            Command_Now.mode = prometheus_msgs::ControlCommand::move;
-                            // Command_Now.reference_state.move_mode  = prometheus_msgs::PositionReference::xyz_yaw;
-                            // Command_Now.reference_state.move_mode  = prometheus_msgs::PositionReference::vel_yaw;
-                            Command_Now.reference_state.move_mode  = prometheus_msgs::PositionReference::xyz_vel_yaw;
-                            Command_Now.reference_state.position_ref =  drone_state_.position;
-                            Command_Now.reference_state.yaw_ref = fast_planner_cmd_.yaw_ref;
+                            // Command_Now.header.stamp = ros::Time::now();
+                            // Command_Now.mode = prometheus_msgs::ControlCommand::move;
+                            // // Command_Now.reference_state.move_mode  = prometheus_msgs::PositionReference::xyz_yaw;
+                            // // Command_Now.reference_state.move_mode  = prometheus_msgs::PositionReference::vel_yaw;
+                            // Command_Now.reference_state.move_mode  = prometheus_msgs::PositionReference::xyz_vel_yaw;
+                            // Command_Now.reference_state.position_ref =  drone_state_.position;
+                            // Command_Now.reference_state.yaw_ref = fast_planner_cmd_.yaw_ref;
                         }
                     }
 

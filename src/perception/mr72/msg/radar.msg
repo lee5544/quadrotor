@@ -1,0 +1,17 @@
+Header header
+uint8 Objects_ID
+float32 Objects_DistLong
+float32 Objects_DistLat
+float32 Objects_VrelLong
+uint8 Objects_DynProp
+uint8 Section_Number
+float32 Objects_VrelLat
+uint8 Objects_RCS
+float32 Objects_Dist
+float32 Objects_Vrel
+float32 azimuth
+float32 obj_angle
+uint8 Reserved0
+float32 azimuth_md
+float32 obj_angle_md
+float32 camera_z

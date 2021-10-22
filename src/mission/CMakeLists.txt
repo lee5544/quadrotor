@@ -9,6 +9,7 @@ find_package(catkin REQUIRED COMPONENTS
   nav_msgs
   geometry_msgs
   prometheus_msgs
+  can_rec
 )
 
 find_package(Eigen3 REQUIRED)
