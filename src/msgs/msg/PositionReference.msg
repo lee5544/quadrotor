@@ -30,6 +30,7 @@ float64[3] acceleration_ref      ## [m/s^2]
 ## float32[3] snap_ref              ## [m/s^4]
 
 ## 角度参考量：偏航角、偏航角速度、偏航角加速度
+# float64[3] attitude_ref          ## [rad]
 float64 yaw_ref                  ## [rad]
 ## float32 yaw_rate_ref             ## [rad/s] 
 ## float32 yaw_acceleration_ref     ## [rad/s] 

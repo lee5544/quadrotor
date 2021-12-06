@@ -16,6 +16,7 @@ float32 time_from_start             ## [s]
 float64[3] position                 ## [m]
 float64  rel_alt                               ## [m] only for outdoor
 float64[3] velocity                 ## [m/s]
+float64[3] accleration                 ## [m/s]
 float64[3] attitude                 ## [rad]
 geometry_msgs/Quaternion attitude_q ## 四元数
 float64[3] attitude_rate            ## [rad/s]

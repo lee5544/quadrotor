@@ -32,13 +32,13 @@
 #include  "can_rec/trigger.h"
 
 //坐标系：原点时无人机home位置的ENU
-struct PlannerGoalRTK{
-    Eigen::Vector3d point;
-    double longitude;
-    double lantitude;
+struct Point{
+    Eigen::Vector3d coordinate;
+    double longitude;//经度
+    double lantitude;//纬度
     double height;
-    double max_vel;
-    double max_acc;
+    double vel;
+    double acc;
 };
 
 class MissionRtk{
@@ -62,29 +62,34 @@ private:
     prometheus_msgs::DroneState drone_state_;                                   //无人机状态量
     prometheus_msgs::PositionReference fastplanner_cmd_;          // fast planner cmd
     
-    int mission_cmd_ = 0;//控制状态切换  
-    enum  mission_fsm_ {idle, takeoff, hold, move, land, disarm};//高级指令
-    int chose_planner_;//选择规划方法
-    enum planner_{no_planner, kino};
-    
     //目标点
-    std::vector<PlannerGoalRTK> goalpoints_; int goalsize_;
-    PlannerGoalRTK goal_;
-
-    double takeoff_height_;//用户自定义起飞高度，大于0.5生效
-    Eigen::Vector3d home_position_;//解锁时，记录无人机相对home位置
-    double home_lon_, home_lat_;
-    double hover_duration_, hover_max_;//悬停时间
+    std::vector<Point> all_goals_; int all_goals_size_;
+    Point goal_;
+    Point final_goal_;
     
-    bool isHold, isMove, isSendGoal, isUpdateHome;
+    Eigen::Vector3d home_position_;//解锁时，记录无人机相对home位置
+    double hone_yaw_;
+    double home_lon_, home_lat_;    double homeUTME_, homeUTMN_;
+    
+    //用户选项
+    double takeoff_height_;//用户自定义起飞高度，大于0.5生效
+    double hover_duration_;//悬停时间
+    int chose_planner_;//选择规划方法
+    enum planner_{no_planner, kino}; 
+
+    //逻辑控制的辅助变量    
+    int mission_cmd_ = 0;//控制状态切换  
+    int last_mission_cmd_ = 0;
+    enum  mission_fsm_ {idle, takeoff, hold, move, land, disarm};//高级指令
+
+    bool isTakeoff, readyTotakeoff, isTakeoff2Hold, isMove2Hold, isMove, isSendGoal, isUpdateHome;
     bool hasPlanningPoints;
     double holdtime_start, holdtime;
 
     bool useMr72, isMr72SlowDown;
 
-    // double move_start, planning_start;
 
-    ros::Subscriber drone_state_sub, fastplanner_sub, home_postion_sub;
+    ros::Subscriber drone_state_sub, fastplanner_sub, home_postion_sub, mr72Arming_sub;
     ros::Publisher command_pub, goal_pub;
 
 };

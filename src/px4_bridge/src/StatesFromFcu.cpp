@@ -27,6 +27,7 @@ void StatesFromFcu::stateCallback(const mavros_msgs::State::ConstPtr &msg)
 void StatesFromFcu::localOdomCallback(const nav_msgs::OdometryConstPtr &msg)
 {
     drone_state_.position = {msg->pose.pose.position.x, msg->pose.pose.position.y, msg->pose.pose.position.z};
+    drone_state_.velocity = {msg->twist.twist.linear.x,msg->twist.twist.linear.y,msg->twist.twist.linear.z};
     drone_state_.attitude_q = msg->pose.pose.orientation;
     Eigen::Vector3d ans;
     ans = quaternion_to_euler(drone_state_.attitude_q);

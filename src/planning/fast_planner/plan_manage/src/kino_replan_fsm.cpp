@@ -202,7 +202,8 @@ void KinoReplanFSM::execFSMCallback(const ros::TimerEvent& e)
         }
         return;
       }
-      else if ((LocalTraj_goal - pos).norm() >3.5) //1.5(info->start_pos_ - pos).norm() < replan_thresh_
+      // else if ((LocalTraj_goal - pos).norm() >3.5) //1.5(info->start_pos_ - pos).norm() < replan_thresh_
+      else if ((info->start_pos_ - pos).norm() < replan_thresh_) //1.5
       { 
          if(fsm_num2 > 100)
          {

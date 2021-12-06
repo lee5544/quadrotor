@@ -78,7 +78,8 @@ void SDFMap::initMap(ros::NodeHandle& nh) {
 
   mp_.local_bound_inflate_ = max(mp_.resolution_, mp_.local_bound_inflate_);
   mp_.resolution_inv_ = 1 / mp_.resolution_;
-  mp_.map_origin_ = Eigen::Vector3d(-x_size / 2.0, -y_size / 2.0, mp_.ground_height_);
+  mp_.map_origin_ = Eigen::Vector3d(-x_size / 2.0, -y_size / 2.0, mp_.ground_height_);//改变地图原点
+  // mp_.map_origin_ = Eigen::Vector3d(-x_size / 4.0, -y_size / 4.0, mp_.ground_height_);
   mp_.map_size_ = Eigen::Vector3d(x_size, y_size, z_size);
 
   mp_.prob_hit_log_ = logit(mp_.p_hit_);
@@ -162,9 +163,9 @@ void SDFMap::initMap(ros::NodeHandle& nh) {
     // indep_odom_sub_ = node_.subscribe<nav_msgs::Odometry>("/sdf_map/odom", 10, &SDFMap::odomCallback, this);
   }
 
-  occ_timer_ = node_.createTimer(ros::Duration(0.05), &SDFMap::updateOccupancyCallback, this);
-  esdf_timer_ = node_.createTimer(ros::Duration(0.05), &SDFMap::updateESDFCallback, this);
-  vis_timer_ = node_.createTimer(ros::Duration(0.05), &SDFMap::visCallback, this);
+  occ_timer_ = node_.createTimer(ros::Duration(0.1), &SDFMap::updateOccupancyCallback, this);
+  esdf_timer_ = node_.createTimer(ros::Duration(0.1), &SDFMap::updateESDFCallback, this);
+  vis_timer_ = node_.createTimer(ros::Duration(0.2), &SDFMap::visCallback, this);
 
   map_pub_ = node_.advertise<sensor_msgs::PointCloud2>("/sdf_map/occupancy", 10);
   map_inf_pub_ = node_.advertise<sensor_msgs::PointCloud2>("/sdf_map/occupancy_inflate", 10);
@@ -800,8 +801,8 @@ void SDFMap::updateOccupancyCallback(const ros::TimerEvent& /*event*/) {
 
   projectDepthImage();
   raycastProcess();
-
-  if (md_.local_updated_) clearAndInflateLocalMap();
+  if (md_.local_updated_) 
+    clearAndInflateLocalMap();
 
   t2 = ros::Time::now();
   // std::cout << "update Occupancy time: "  << t2.toSec() - t1.toSec() <<std::endl;
@@ -963,7 +964,7 @@ void SDFMap::poindsOdomCallback(const sensor_msgs::PointCloud2ConstPtr& img,
             // p3d_inf(0) = p3d(0);
             // p3d_inf(1) = p3d(1);
             // p3d_inf(2) = p3d(2);
-            max_x = max(max_x, p3d_inf(0));
+            max_x = max(max_x, p3d_inf(0));//保证点在全局地图内部
             max_y = max(max_y, p3d_inf(1));
             max_z = max(max_z, p3d_inf(2));
 

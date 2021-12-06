@@ -1,7 +1,5 @@
-
-
 # 启动mission
-gnome-terminal -t "mission" -x bash -c "roslaunch mission mission_rtk.launch; exec bash"
+gnome-terminal -t "mission" -x bash -c "roslaunch mission  mission_sample.launch; exec bash"
 
 sleep 2s
 

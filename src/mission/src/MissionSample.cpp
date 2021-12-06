@@ -36,7 +36,7 @@ void MissionSample::init(ros::NodeHandle node)
 
 
     takeoff_height_ = 1.5;
-    hover_duration_ = 5;//悬停时间 5s
+    hover_duration_ = 3;//悬停时间 5s
     hover_max_ = 8;//最大悬停时间15s
     mission_cmd_ = mission_fsm_::idle;
 
@@ -44,28 +44,18 @@ void MissionSample::init(ros::NodeHandle node)
     //  设置目标点
     //  位置参数，最大速度，最大加速度
     //  降速过程会发生意外
-    PlannerGoal point3;
-        point3.point_ << 0,0,takeoff_height_; point3.max_vel_=0.5; point3.max_acc_=1;
-        goalpoints_.push_back(point3);
-    PlannerGoal point2;
-        point2.point_ << 0,10,takeoff_height_; point2.max_vel_=0.5; point2.max_acc_=1;    
-        goalpoints_.push_back(point2);
-    PlannerGoal point1;
-        point1.point_ << 10,10,takeoff_height_; point1.max_vel_=0.5; point1.max_acc_=1;
-        goalpoints_.push_back(point1);    
-    PlannerGoal point0;
-        point0.point_ << 10,0,takeoff_height_; point0.max_vel_=0.5; point0.max_acc_=1;
-        goalpoints_.push_back(point0);    
-
+    // PlannerGoal point3;
+    //     point3.point_ << 0,0,takeoff_height_; point3.max_vel_=0.5; point3.max_acc_=1;
+    //     goalpoints_.push_back(point3);
     // PlannerGoal point2;
-    //     point2.point_ << 20,10,takeoff_height_; point2.max_vel_=2; point2.max_acc_=2;    
+    //     point2.point_ << 0,10,takeoff_height_; point2.max_vel_=0.5; point2.max_acc_=1;    
     //     goalpoints_.push_back(point2);
     // PlannerGoal point1;
-    //     point1.point_ << 20,0,takeoff_height_; point1.max_vel_=1; point1.max_acc_=2;
+    //     point1.point_ << 10,10,takeoff_height_; point1.max_vel_=0.5; point1.max_acc_=1;
     //     goalpoints_.push_back(point1);    
-    // PlannerGoal point0;
-    //     point0.point_ << 10,0,takeoff_height_; point0.max_vel_=2; point0.max_acc_=2;
-    //     goalpoints_.push_back(point0);    
+    PlannerGoal point0;
+        point0.point_ << 20,0,takeoff_height_; point0.max_vel_=2; point0.max_acc_=2.5;
+        goalpoints_.push_back(point0);    
 
     goalsize_ = goalpoints_.size();
     // std::cout << goalsize_ << std::endl;
@@ -201,6 +191,7 @@ void MissionSample::run()
                         goalpoints_[iter].point_.x() += home_position_.x();
                         goalpoints_[iter].point_.y() += home_position_.y();
                         goalpoints_[iter].point_.z() = drone_state_.position[2];
+                        // goalpoints_[iter].point_.z() = takeoff_height_;
                         // std::cout << iter << "  "<<goalpoints_[iter].transpose() << std::endl;
                     }
                     // goal_ = goalpoints_.back();//获取目标集最新的点
@@ -255,9 +246,9 @@ void MissionSample::run()
                             hasPlanningPoints_ = false;
                             Command_Now.header.stamp = ros::Time::now();
                             Command_Now.mode = prometheus_msgs::ControlCommand::move;
-                            // Command_Now.reference_state.move_mode  = prometheus_msgs::PositionReference::xyz_yaw;
+                            Command_Now.reference_state.move_mode  = prometheus_msgs::PositionReference::xyz_yaw;
                             // Command_Now.reference_state.move_mode  = prometheus_msgs::PositionReference::vel_yaw;
-                            Command_Now.reference_state.move_mode  = prometheus_msgs::PositionReference::xyz_vel_yaw;
+                            // Command_Now.reference_state.move_mode  = prometheus_msgs::PositionReference::xyz_vel_yaw;
                             Command_Now.reference_state =  fast_planner_cmd_;
                             Command_Now.reference_state.yaw_ref = fast_planner_cmd_.yaw_ref;
                         }

@@ -1,35 +1,35 @@
 /**
- * @Name:       CommandToFcu
+ * @Name:       CommandToFcuAtt
  * @Author:       yong
- * @Date: 2021-09-26 16:20:09
+ * @Date: 2021-11-24 
  * @LastEditors:         yong
  * @LastEditTime:        Do not edit
  * @Description:      解析无人机高级指令，发送期望控制量，实现PX4底层控制
- * @Subscriber:   
- *     控制指令:   prometheus_msgs::ControlCommand
- *      无人机状态: prometheus_msgs::DroneState
- * @Publisher: 
- *      PX4控制量:  mavros_msgs::PositionTarget
+ * @参考: gly   
  */
-#ifndef COMMANDTOFCU_H
-#define COMMANDTOFCU_H
+#ifndef COMMANDToFCUATT_H
+#define COMMANDToFCUATT_H
 
 #include <iostream>
 #include <Eigen/Eigen>
 
 #include <ros/ros.h>
 #include <mavros_msgs/PositionTarget.h>
+#include <mavros_msgs/AttitudeTarget.h>
 #include <mavros_msgs/SetMode.h>
 #include <mavros_msgs/CommandBool.h>
+
 
 #include <prometheus_msgs/DroneState.h>
 #include <prometheus_msgs/ControlCommand.h>
 
-class CommandToFcu
+#include "pos_controller_DF.h"
+
+class CommandToFcuAtt
 {
     public:
-        CommandToFcu();
-        ~CommandToFcu();
+        CommandToFcuAtt();
+        ~CommandToFcuAtt();
 
         void init(ros::NodeHandle node);
         void run(double dt);
@@ -40,6 +40,8 @@ class CommandToFcu
     private:
         prometheus_msgs::DroneState drone_state_;
         prometheus_msgs::ControlCommand cmd_, cmd_last_;
+
+        pos_controller_DF controller_;
 
         double takeoff_height_ ;      //默认起飞高度
         // double disarm_height_ ;      //到达该降落高度时，切换至land
@@ -59,7 +61,8 @@ class CommandToFcu
         double yaw_sp;
         double yawdot_sp;
 
-        ros::Publisher setpoint_raw_local_pub;
+        ros::Publisher setpoint_raw_local_pub, setpoint_raw_attitude_pub;
+;
         ros::Subscriber command_sub, drone_state_sub;
 
         ros::ServiceClient set_mode_client;//服务，改变PX4模式
@@ -70,10 +73,7 @@ class CommandToFcu
         bool check_failsafe();
         void send_xyz_setpoint(mavros_msgs::PositionTarget pos_setpoint, Eigen::Vector3d pos_sp);
         void send_xyz_yaw_setpoint(mavros_msgs::PositionTarget pos_setpoint, Eigen::Vector3d pos_sp, double yaw_sp);
-        void send_xyz_vel_yaw_setpoint(mavros_msgs::PositionTarget pos_setpoint, Eigen::Vector3d pos_sp, Eigen::Vector3d vel_sp, double yaw_sp);
-        // void send_xyz_vel_yaw_yawdot_setpoint(mavros_msgs::PositionTarget pos_setpoint, Eigen::Vector3d pos_sp, Eigen::Vector3d vel_sp, double yaw_sp, double yawdot_sp);
-        // void send_xyz_vel_acc_yaw_setpoint(mavros_msgs::PositionTarget pos_setpoint, Eigen::Vector3d pos_sp, Eigen::Vector3d vel_sp, Eigen::Vector3d acc_sp, double yaw_sp);
-        void send_vel_yaw_setpoint(mavros_msgs::PositionTarget pos_setpoint, Eigen::Vector3d vel_sp, double yaw_sp);
+        void send_att_setpoint(const double thrust_setpoint, const Eigen::Quaterniond attitude_setpoint);
 };
 
 #endif

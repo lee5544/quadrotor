@@ -1,11 +1,11 @@
-#include "CommandToFcu.h"
+#include "CommandToFcuAtt.h"
 
-CommandToFcu::CommandToFcu()
+CommandToFcuAtt::CommandToFcuAtt()
 {}
-CommandToFcu::~CommandToFcu()
+CommandToFcuAtt::~CommandToFcuAtt()
 {}
 
-void CommandToFcu::init(ros::NodeHandle node)
+void CommandToFcuAtt::init(ros::NodeHandle node)
 {
     ROS_INFO("send commands to fcu!");
     takeoff_height_ = 1.0;                                       //默认起飞高度
@@ -22,25 +22,27 @@ void CommandToFcu::init(ros::NodeHandle node)
     cmd_.mode = 0;
     
     setpoint_raw_local_pub = node.advertise<mavros_msgs::PositionTarget>( "/mavros/setpoint_raw/local", 10);
+    setpoint_raw_attitude_pub = node.advertise<mavros_msgs::AttitudeTarget>( "/mavros/setpoint_raw/attitude", 10);
+
     set_mode_client = node.serviceClient<mavros_msgs::SetMode>("/mavros/set_mode");
     arming_client = node.serviceClient<mavros_msgs::CommandBool>("/mavros/cmd/arming");
 
-    drone_state_sub = node.subscribe("/prometheus/drone_state", 10, &CommandToFcu::dronestateCallback, this);
-    command_sub = node.subscribe("/prometheus/control_command", 100, &CommandToFcu::commandCallback, this);
+    drone_state_sub = node.subscribe("/prometheus/drone_state", 10, &CommandToFcuAtt::dronestateCallback, this);
+    command_sub = node.subscribe("/prometheus/control_command", 100, &CommandToFcuAtt::commandCallback, this);
 }
 
-void CommandToFcu::commandCallback(const prometheus_msgs::ControlCommand::ConstPtr &msg)
+void CommandToFcuAtt::commandCallback(const prometheus_msgs::ControlCommand::ConstPtr &msg)
 {
     cmd_ = *msg;
     // run(0.02);//数值为运行频率的倒数
 }
 
-void CommandToFcu::dronestateCallback(const prometheus_msgs::DroneState::ConstPtr& msg)
+void CommandToFcuAtt::dronestateCallback(const prometheus_msgs::DroneState::ConstPtr& msg)
 {
     drone_state_ = *msg;
 }
 
-bool CommandToFcu::check_failsafe()
+bool CommandToFcuAtt::check_failsafe()
 {
     if (drone_state_.position[0] < geo_fence_x_[0] || drone_state_.position[0] > geo_fence_x_[1] ||
         drone_state_.position[1] < geo_fence_y_[0] || drone_state_.position[1] > geo_fence_y_[1] ||
@@ -54,7 +56,7 @@ bool CommandToFcu::check_failsafe()
     }
 }
 
-void CommandToFcu::run(double dt)
+void CommandToFcuAtt::run(double dt)
 {
     mavros_msgs::PositionTarget pos_setpoint;
 
@@ -105,20 +107,6 @@ void CommandToFcu::run(double dt)
 
         case prometheus_msgs::ControlCommand::hold:
         {
-            // if (cmd_last_.mode == prometheus_msgs::ControlCommand::takeoff)//仅仅记录一次当前位置
-            // {
-            //     ROS_INFO("TAKEOFF TO HOLD");
-            //     pos_sp = takeoff_pos;
-            //     yaw_sp = takeoff_yaw;//当前航向角
-            //     std::cout<<"    The hold target is :     "<< pos_sp.transpose() << "   " << yaw_sp*53.7 << std::endl;                                       
-            // }
-            // else if (cmd_last_.mode == prometheus_msgs::ControlCommand::move)
-            // {
-            //     ROS_INFO("MOVE TO HOLD");//记录的是最后一个目标点位置
-            //     pos_sp = Eigen::Vector3d(drone_state_.position[0], drone_state_.position[1], drone_state_.position[2]);
-            //     yaw_sp = drone_state_.attitude[2];//当前航向角
-            //     std::cout<<"    The hold target is :     "<< pos_sp.transpose() << "   " << yaw_sp*53.7 << std::endl;                                       
-            // }
             if (cmd_last_.mode != prometheus_msgs::ControlCommand::hold)//仅仅记录一次当前位置
             {
                 ROS_INFO("HOLD");
@@ -142,25 +130,29 @@ void CommandToFcu::run(double dt)
                 pos_sp << cmd_.reference_state.position_ref[0], cmd_.reference_state.position_ref[1], cmd_.reference_state.position_ref[2];
                 send_xyz_setpoint(pos_setpoint, pos_sp);
             }
-            if( cmd_.reference_state.move_mode  == prometheus_msgs::PositionReference::xyz_yaw )//已经测试
+            else if( cmd_.reference_state.move_mode  == prometheus_msgs::PositionReference::xyz_yaw )//已经测试
             {
                 pos_sp << cmd_.reference_state.position_ref[0], cmd_.reference_state.position_ref[1], cmd_.reference_state.position_ref[2];
                 yaw_sp = cmd_.reference_state.yaw_ref;
                 send_xyz_yaw_setpoint(pos_setpoint, pos_sp, yaw_sp);
             }
-            else if( cmd_.reference_state.move_mode  == prometheus_msgs::PositionReference::xyz_vel_yaw )//已经测试
+            else if( cmd_.reference_state.move_mode == prometheus_msgs::PositionReference::trajectory)
             {
-                pos_sp << cmd_.reference_state.position_ref[0], cmd_.reference_state.position_ref[1], cmd_.reference_state.position_ref[2];
-                vel_sp << cmd_.reference_state.velocity_ref[0], cmd_.reference_state.velocity_ref[1], cmd_.reference_state.velocity_ref[2];
+                std::cout << " cal att " << std::endl;
+                Eigen::Vector3d cur_pos(drone_state_.position[0], drone_state_.position[1], drone_state_.position[2]); 
+                Eigen::Vector3d cur_vel(drone_state_.velocity[0], drone_state_.velocity[1], drone_state_.velocity[2]);
+                Eigen::Vector3d cur_acc(drone_state_.accleration[0], drone_state_.accleration[1], drone_state_.accleration[2]);
+                Eigen::Vector3d tar_pos(cmd_.reference_state.position_ref[0], cmd_.reference_state.position_ref[1], cmd_.reference_state.position_ref[2]);
+                Eigen::Vector3d tar_vel(cmd_.reference_state.velocity_ref[0], cmd_.reference_state.velocity_ref[1], cmd_.reference_state.velocity_ref[2]);
+                Eigen::Vector3d tar_acc(cmd_.reference_state.acceleration_ref[0], cmd_.reference_state.acceleration_ref[1], cmd_.reference_state.acceleration_ref[2]);
                 yaw_sp = cmd_.reference_state.yaw_ref;
+
+                Eigen::Vector3d  thrust_temp = controller_.pos_controller(cur_pos, cur_vel, cur_acc, tar_pos, tar_vel, tar_acc);
                 
-                send_xyz_vel_yaw_setpoint(pos_setpoint, pos_sp, vel_sp, yaw_sp);
-            }
-            else if( cmd_.reference_state.move_mode == prometheus_msgs::PositionReference::vel_yaw)//已经测试
-            {
-                vel_sp << cmd_.reference_state.velocity_ref[0], cmd_.reference_state.velocity_ref[1], cmd_.reference_state.velocity_ref[2];
-                yaw_sp = cmd_.reference_state.yaw_ref;
-                send_vel_yaw_setpoint(pos_setpoint, vel_sp, yaw_sp);
+                double all_thrust; Eigen::Quaterniond att_sp;
+                controller_.thrust2quaternion(thrust_temp, yaw_sp, all_thrust, att_sp);
+
+                send_att_setpoint(all_thrust, att_sp);
             }
             // else if( cmd_.move_mode  == xyz_vel_acc_yaw )
             // {
@@ -213,7 +205,7 @@ void CommandToFcu::run(double dt)
     cmd_last_ = cmd_;
 }
 
-void CommandToFcu::send_xyz_setpoint(mavros_msgs::PositionTarget pos_setpoint, Eigen::Vector3d pos_sp)
+void CommandToFcuAtt::send_xyz_setpoint(mavros_msgs::PositionTarget pos_setpoint, Eigen::Vector3d pos_sp)
 {
     // mavros_msgs::PositionTarget pos_setpoint;
     //Bitmask toindicate which dimensions should be ignored (1 means ignore,0 means not ignore; Bit 10 must set to 0)
@@ -231,7 +223,7 @@ void CommandToFcu::send_xyz_setpoint(mavros_msgs::PositionTarget pos_setpoint, E
     setpoint_raw_local_pub.publish(pos_setpoint);
 }
 
-void CommandToFcu::send_xyz_yaw_setpoint(mavros_msgs::PositionTarget pos_setpoint, Eigen::Vector3d pos_sp, double yaw_sp)
+void CommandToFcuAtt::send_xyz_yaw_setpoint(mavros_msgs::PositionTarget pos_setpoint, Eigen::Vector3d pos_sp, double yaw_sp)
 {
     // mavros_msgs::PositionTarget pos_setpoint;
     //Bitmask toindicate which dimensions should be ignored (1 means ignore,0 means not ignore; Bit 10 must set to 0)
@@ -250,58 +242,43 @@ void CommandToFcu::send_xyz_yaw_setpoint(mavros_msgs::PositionTarget pos_setpoin
     setpoint_raw_local_pub.publish(pos_setpoint);
 }
 
-void CommandToFcu::send_xyz_vel_yaw_setpoint(mavros_msgs::PositionTarget pos_setpoint, Eigen::Vector3d pos_sp, Eigen::Vector3d vel_sp, double yaw_sp)
+//发送角度期望值至飞控（输入：期望角度-四元数,期望推力）
+void CommandToFcuAtt::send_att_setpoint(const double thrust_setpoint, const Eigen::Quaterniond attitude_setpoint)
 {
-    // mavros_msgs::PositionTarget pos_setpoint;
+    mavros_msgs::AttitudeTarget att_setpoint;
 
-    // 速度作为前馈项， 参见FlightTaskOffboard.cpp
-    // 2. position setpoint + velocity setpoint (velocity used as feedforward)
-    // 控制方法请见 PositionControl.cpp
-    pos_setpoint.header.stamp = ros::Time::now();
-    pos_setpoint.type_mask = 0b100111000000;   // 100 111 000 000  vx vy　vz x y z+ yaw
+    //Mappings: If any of these bits are set, the corresponding input should be ignored:
+    //bit 1: body roll rate, bit 2: body pitch rate, bit 3: body yaw rate. bit 4-bit 6: reserved, bit 7: throttle, bit 8: attitude
 
-    pos_setpoint.coordinate_frame = 1;
+    att_setpoint.type_mask = 0b00000111;
 
-    pos_setpoint.position.x = pos_sp[0];
-    pos_setpoint.position.y = pos_sp[1];
-    pos_setpoint.position.z = pos_sp[2];
-    pos_setpoint.velocity.x = vel_sp[0];
-    pos_setpoint.velocity.y = vel_sp[1];
-    pos_setpoint.velocity.z = vel_sp[2];
+    att_setpoint.orientation.x = attitude_setpoint.x();
+    att_setpoint.orientation.y = attitude_setpoint.y();
+    att_setpoint.orientation.z = attitude_setpoint.z();
+    att_setpoint.orientation.w = attitude_setpoint.w();
 
-    pos_setpoint.yaw = yaw_sp;
+    att_setpoint.thrust = thrust_setpoint;
 
-    setpoint_raw_local_pub.publish(pos_setpoint);
-}
+    setpoint_raw_attitude_pub.publish(att_setpoint);
 
-void CommandToFcu::send_vel_yaw_setpoint(mavros_msgs::PositionTarget pos_setpoint, Eigen::Vector3d vel_sp, double yaw_sp)
-{
-    pos_setpoint.header.stamp = ros::Time::now();
-    pos_setpoint.type_mask = 0b100111000111;
-
-    pos_setpoint.coordinate_frame = 1;
-
-    pos_setpoint.velocity.x = vel_sp[0];
-    pos_setpoint.velocity.y = vel_sp[1];
-    pos_setpoint.velocity.z = vel_sp[2];
-
-    pos_setpoint.yaw = yaw_sp;
-
-    setpoint_raw_local_pub.publish(pos_setpoint);
+    // 检查飞控是否收到控制量
+    // cout <<">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>command_to_mavros<<<<<<<<<<<<<<<<<<<<<<<<<<<" <<endl;
+    // cout << "Att_target [R P Y] : " << euler_fcu_target[0] * 180/M_PI <<" [deg] "<<euler_fcu_target[1] * 180/M_PI << " [deg] "<< euler_fcu_target[2] * 180/M_PI<<" [deg] "<<endl;
+    // cout << "Thr_target [0 - 1] : " << Thrust_target <<endl;
 }
 
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "CommandsToFcu_node");
+    ros::init(argc, argv, "CommandToFcuAtt_node");
     ros::NodeHandle nh("~");
-    CommandToFcu commandToFcu;
-    commandToFcu.init(nh);
+    CommandToFcuAtt CommandToFcuAtt;
+    CommandToFcuAtt.init(nh);
     
     ros::Rate rate(50.0);
     while(ros::ok())
     {
         ros::spinOnce();
-        commandToFcu.run(0.02);//数值为运行频率的倒数
+        CommandToFcuAtt.run(0.02);//数值为运行频率的倒数
         rate.sleep();
     }
     return 0;

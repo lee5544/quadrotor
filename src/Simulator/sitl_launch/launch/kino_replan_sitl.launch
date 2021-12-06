@@ -2,7 +2,7 @@
   <!-- size of map, change the size in x, y, z according to your application -->
   <arg name="map_size_x" value="80.0"/>
   <arg name="map_size_y" value="80.0"/>
-  <arg name="map_size_z" value="10.0"/>
+  <arg name="map_size_z" value="20.0"/>
 
   <!-- topic of your odometry such as VIO 视觉惯性里程计 or LIO 激光雷达惯性里程计 -->
   <arg name="odom_topic" value="/mavros/local_position/odom" />

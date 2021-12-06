@@ -33,7 +33,7 @@ class alarming{
         bool init_flag = 1; //判断是否是第一次在监测区间内探测到点
     public:
         alarming(){
-            alarm_pub = nh.advertise<can_rec::trigger>("radar/alarming",10);
+            alarm_pub = nh.advertise<can_rec::trigger>("/radar/alarming",10);
             alarm_sub = nh.subscribe("/can_radar_info",10,&alarming::alarminfocallback,this);
             //remove_alarm_sub = nh.subscribe();
         }

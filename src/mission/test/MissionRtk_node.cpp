@@ -13,7 +13,7 @@ int main(int argc, char **argv)
     ros::NodeHandle nh("~");
 
 
-    double frequency = 50;
+    double frequency = 20;
     ros::Rate rate(frequency);
 
     ROS_INFO("MissionRtk");

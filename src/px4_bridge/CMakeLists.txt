@@ -28,6 +28,9 @@ include_directories(
   SYSTEM
   ${catkin_INCLUDE_DIRS}
   ${Eigen3_INCLUDE_DIRS}
+  ../Utils
+  ../control/DF/include
+
 )
 
 add_executable(statesToFcu_node
@@ -51,6 +54,14 @@ add_executable(commandToFcu_node
   src/CommandToFcu.cpp
 )
 target_link_libraries(commandToFcu_node 
+  ${catkin_LIBRARIES}
+)
+
+add_executable(commandToFcuAtt_node
+  include/CommandToFcuAtt.h
+  src/CommandToFcuAtt.cpp
+)
+target_link_libraries(commandToFcuAtt_node 
   ${catkin_LIBRARIES}
 )
 

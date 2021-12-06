@@ -25,12 +25,37 @@ void MissionRtk::dronestateCallback(const prometheus_msgs::DroneState::ConstPtr&
 void MissionRtk::homepositionCallback(const mavros_msgs::GPSRAW::ConstPtr& msg)
 {
     if(isUpdateHome)//只在需要的时候更新
-    {
-        home_lon_ = double (msg->lon / 10000000.0);
-        home_lat_ = double(msg->lat / 10000000.0);
+    { 
         isUpdateHome = false;
 
-        std::cout << "the home position(lon,lat): " << home_lon_ << ", " <<home_lat_<<std::endl;
+        home_position_.x() = drone_state_.position[0];//记录home位置
+        home_position_.y() = drone_state_.position[1];
+        home_position_.z() = drone_state_.position[2];
+        hone_yaw_ = drone_state_.attitude[2];
+
+        home_lon_ = double (msg->lon / 10000000.0);
+        home_lat_ = double(msg->lat / 10000000.0);
+
+        rtk2xy( home_lon_, home_lat_, homeUTME_, homeUTMN_);//计算经纬度的ENU
+
+        double goalE, goalN;
+        for(int  iter = 0; iter < all_goals_.size(); iter++)
+        {
+            rtk2xy(all_goals_[iter].longitude, all_goals_[iter].lantitude, goalE, goalN);//计算目标点经纬度的ENU
+
+            all_goals_[iter].coordinate[0] = goalE - homeUTME_ + home_position_[0];
+            all_goals_[iter].coordinate[1] = goalN - homeUTMN_ + home_position_[1];
+            all_goals_[iter].coordinate[2] = takeoff_height_ + home_position_[2];
+            // std::cout << iter << "  "<<all_goals_[iter].point.transpose() << std::endl;
+
+        }
+        final_goal_ = all_goals_[all_goals_.size()-1];
+
+        readyTotakeoff = true;
+
+        std::cout << "      the home position(x,y,z,yaw): " << home_position_.transpose() << ", " << hone_yaw_*53.7<< std::endl;
+        std::cout << "      the home position(lon,lat): " << home_lon_ << ", " <<home_lat_<<std::endl;
+        std::cout << "      the home position(E,N): " << homeUTME_ << ", " <<homeUTMN_<<std::endl;
     }
 
     // 测试RTK数据以及转换后的精度，小数点后第5位约表示1m
@@ -54,13 +79,13 @@ void MissionRtk::mr72ArmingCallback(const can_rec::trigger::ConstPtr& msg)
 
     nav_msgs::Path path;
     geometry_msgs::PoseStamped poses;
-    poses.pose.position.x = goal_.point[0];
-    poses.pose.position.y = goal_.point[1];
-    poses.pose.position.z = goal_.point[2];
+    poses.pose.position.x = goal_.coordinate[0];
+    poses.pose.position.y = goal_.coordinate[1];
+    poses.pose.position.z = goal_.coordinate[2];
     path.poses.push_back(poses);
 
-    poses.pose.position.x = goal_.max_vel;//最大速度
-    poses.pose.position.y = goal_.max_acc;//最大加速度
+    poses.pose.position.x = goal_.vel;//最大速度
+    poses.pose.position.y = goal_.acc;//最大加速度
     poses.pose.position.z = 0;//最大速度
     if( isMr72SlowDown)
     {
@@ -70,7 +95,7 @@ void MissionRtk::mr72ArmingCallback(const can_rec::trigger::ConstPtr& msg)
     }    
     path.poses.push_back(poses);
     
-    if(useMr72 && goalpoints_.size() > 0)
+    if(useMr72 && all_goals_.size() > 0)
     {
         goal_pub.publish(path);            
     }
@@ -80,50 +105,49 @@ void MissionRtk::init(ros::NodeHandle node)
 {
     //【订阅】无人机当前状态
     drone_state_sub = node.subscribe("/prometheus/drone_state", 10, &MissionRtk::dronestateCallback, this);
-    //【订阅】来自planning的指令
+    home_postion_sub   =   node.subscribe("/radar/alarming", 10, &MissionRtk::mr72ArmingCallback, this);    
+    
+    //【订阅】
     fastplanner_sub   =   node.subscribe("/prometheus/fast_planner/position_cmd", 50, &MissionRtk::fastplannerCallback, this);
-    //【订阅】来自无人机的的全局位置
-    home_postion_sub   =   node.subscribe("/mavros/gpsstatus/gps1/raw", 10, &MissionRtk::homepositionCallback, this);
+    mr72Arming_sub = node.subscribe("/mavros/gpsstatus/gps1/raw", 10, &MissionRtk::homepositionCallback, this);
     
     // 【发布】发送给控制模块 [px4_pos_controller.cpp]的命令
     command_pub = node.advertise<prometheus_msgs::ControlCommand>("/prometheus/control_command", 10, this);
-
     goal_pub = node.advertise<nav_msgs::Path>("/waypoint_generator/waypoints", 10, this);
 
 
     takeoff_height_ = 1.5;
     hover_duration_ = 3;//悬停时间 3s
-    hover_max_ = 8;//最大悬停时间
-    mission_cmd_ = mission_fsm_::idle;
-
-    // node.param("point_num", goalsize_, -1);
-    //  设置目标点
-    //  位置参数，最大速度，最大加速度
-    // PlannerGoalRTK point3;
-    //     point3.longitude = 0; point3.lantitude = 0; point3.height = takeoff_height_; 
-    //     point3.max_vel=2; point3.max_acc=2;    
-    //     goalpoints_.push_back(point3);
-    // PlannerGoalRTK point2;
-    //     point2.longitude = 0; point2.lantitude = 0; point2.height = takeoff_height_; 
-    //     point2.max_vel=2; point2.max_acc=2;    
-    //     goalpoints_.push_back(point2);
-    // PlannerGoalRTK point1;
-    //     point1.longitude = 0; point1.lantitude = 0; point1.height = takeoff_height_; 
-    //     point1.max_vel=1; point1.max_acc=2;
-    //     goalpoints_.push_back(point1);    
-    PlannerGoalRTK point0;
-        point0.longitude = 8.5457247; point0.lantitude = 47.3977409; point0.height = takeoff_height_; 
-        point0.max_vel=2; point0.max_acc=2;
-        goalpoints_.push_back(point0);    
-
-    goalsize_ = goalpoints_.size();
-    // std::cout << goalsize_ << std::endl;
-
     chose_planner_ = planner_::kino;//规划方法
     // chose_planner_ = planner_::no_planner;//规划方法
 
+    // node.param("point_num", all_goals_size_, -1);
+    //  设置目标点
+    //  位置参数，最大速度，最大加速度
+    // Point point3;
+    //     point3.longitude = 0; point3.lantitude = 0; point3.height = takeoff_height_; 
+    //     point3.vel=2; point3.acc=2;    
+    //     all_goals_.push_back(point3);
+    // Point point2;
+    //     point2.longitude = 0; point2.lantitude = 0; point2.height = takeoff_height_; 
+    //     point2.vel=2; point2.acc=2;    
+    //     all_goals_.push_back(point2);
+    // Point point1;
+    //     point1.longitude = 0; point1.lantitude = 0; point1.height = takeoff_height_; 
+    //     point1.vel=1; point1.acc=2;
+    //     all_goals_.push_back(point1);    
+    Point point0;//(10,0,1.5)
+        point0.longitude = 8.5457232; point0.lantitude = 47.3977424; point0.height = takeoff_height_; 
+        point0.vel=1; point0.acc=1.5;
+        all_goals_.push_back(point0);    
 
-    isHold = false; isMove = false; isUpdateHome = false;
+    all_goals_size_ = all_goals_.size();
+    // std::cout << all_goals_size_ << std::endl;
+
+    mission_cmd_ = mission_fsm_::idle;
+    isTakeoff = false; readyTotakeoff = false; 
+    isTakeoff2Hold = false; isMove2Hold = false;
+    isMove = false; isUpdateHome = false;
     isSendGoal = true;
     hasPlanningPoints = false;
 
@@ -132,11 +156,11 @@ void MissionRtk::init(ros::NodeHandle node)
     // 初始化命令 - Idle模式 电机怠速旋转 等待来自上层的控制指令
     command_now_.mode                                = prometheus_msgs::ControlCommand::idle;
     command_now_.source = "NODE_NAME";
-    command_now_.reference_state.move_mode           = prometheus_msgs::PositionReference::xyz_yaw;
-    command_now_.reference_state.move_frame          = prometheus_msgs::PositionReference::ENU_FRAME;
-    command_now_.reference_state.position_ref[0]     = 0;
-    command_now_.reference_state.position_ref[1]     = 0;
-    command_now_.reference_state.position_ref[2]     = 0;
+    command_now_.reference_state.move_mode         = prometheus_msgs::PositionReference::xyz_yaw;
+    command_now_.reference_state.move_frame         = prometheus_msgs::PositionReference::ENU_FRAME;
+    command_now_.reference_state.position_ref[0]    = 0;
+    command_now_.reference_state.position_ref[1]    = 0;
+    command_now_.reference_state.position_ref[2]    = 0;
     command_now_.reference_state.velocity_ref[0]     = 0;
     command_now_.reference_state.velocity_ref[1]     = 0;
     command_now_.reference_state.velocity_ref[2]     = 0;
@@ -144,6 +168,20 @@ void MissionRtk::init(ros::NodeHandle node)
     command_now_.reference_state.acceleration_ref[1] = 0;
     command_now_.reference_state.acceleration_ref[2] = 0;
     command_now_.reference_state.yaw_ref             = 0;
+    
+    ROS_INFO("initalization");
+    std::cout<<"    takeoff height: " << takeoff_height_ <<std::endl;
+    std::cout<<"    hold time:(/s) " << hover_duration_ <<std::endl;
+    std::cout<<"    goals size " << all_goals_size_ <<std::endl;
+    if(chose_planner_ == planner_::kino){
+        std::cout<<"    planning method: " << "planner_::kino" <<std::endl;
+    }
+    else if(chose_planner_ == planner_::no_planner){
+        std::cout<<"    planning method: " << "planner_::no_planner" <<std::endl;
+    }
+    if(useMr72){
+        std::cout<<"    use MR72 to reduce the speed"<<std::endl;
+    }
 }
 
 /**
@@ -154,70 +192,92 @@ void MissionRtk::init(ros::NodeHandle node)
  */
 void MissionRtk::run()
 {
+        // if(){    //  错误保护机制
+        //     return 0;
+        // }
         switch(mission_cmd_){
             case mission_fsm_::idle:{
+                // if  (drone_state_.mode == "OFFBOARD")//解锁后，进入takeoff，指明起飞高度，记录home位置
                 if  (drone_state_.armed)//解锁后，进入takeoff，指明起飞高度，记录home位置
                 {
+                    ROS_INFO("The mission is started ......");
                     ROS_INFO("IDLE to TAKEOFF");
-                    
-                    home_position_.x() = drone_state_.position[0];
-                    home_position_.y() = drone_state_.position[1];
-                    home_position_.z() = drone_state_.position[2];
-                    std::cout << "the home position(x,y,z): " << home_position_.transpose() << std::endl;
-                    //读取home的经纬高
-                    isUpdateHome = true;// 发送更新home_gps的命令
-
-                    mission_cmd_ = mission_fsm_::takeoff;
-                    command_now_.header.stamp = ros::Time::now();
-                    command_now_.mode = prometheus_msgs::ControlCommand::takeoff;
-                    command_now_.reference_state.position_ref[2]     = takeoff_height_ + drone_state_.position[2];//当高度大于0.5m时，有效
+                    mission_cmd_ = mission_fsm_::takeoff;   isTakeoff = true;
                 }
                 else
                 {
+                    mission_cmd_ = mission_fsm_::idle;
                     command_now_.header.stamp = ros::Time::now();
                     command_now_.mode = prometheus_msgs::ControlCommand::idle;
+                    command_pub.publish(command_now_);
                 }
-                command_pub.publish(command_now_);
                 
                 break;
             }
 
             case mission_fsm_::takeoff:{
-                if (drone_state_.position[2] > command_now_.reference_state.position_ref[2]-0.2)//到达指定高度，进入hold
+                if(isTakeoff){
+                    isTakeoff = false;
+                    isUpdateHome = true;// 发送更新home_gps的命令          
+                }
+                
+                if(readyTotakeoff){
+                    readyTotakeoff = false;
+                    command_now_.mode = prometheus_msgs::ControlCommand::takeoff;   
+                    command_now_.reference_state.position_ref[0] = home_position_[0];
+                    command_now_.reference_state.position_ref[1] = home_position_[1];
+                    command_now_.reference_state.position_ref[2] = takeoff_height_ + home_position_[2];//当高度大于0.5m时，有效
+                    command_now_.reference_state.yaw_ref = hone_yaw_;
+                    command_now_.header.stamp = ros::Time::now();    
+                    
+                    std::cout << "      the takeoff target is " <<  home_position_[0] << "    " << home_position_[1] << "     " 
+                                       << takeoff_height_ + home_position_[2] << std::endl;
+                }
+                else if (command_now_.reference_state.position_ref[2] > 0.5 && 
+                                    drone_state_.position[2] > command_now_.reference_state.position_ref[2]-0.2)//到达指定高度，进入hold
                 {
                     ROS_INFO("TAKEOFF to HOLD");
-                    mission_cmd_ = mission_fsm_::hold;    isHold = true;
+                    mission_cmd_ = mission_fsm_::hold;    isTakeoff2Hold = true;
                     command_now_.header.stamp = ros::Time::now();
                     command_now_.mode = prometheus_msgs::ControlCommand::hold;
                 }
-                else
-                {
-                    mission_cmd_ = mission_fsm_::takeoff;
-                    command_now_.header.stamp = ros::Time::now();
-                    command_now_.mode = prometheus_msgs::ControlCommand::takeoff;        
-                }
-
-                command_pub.publish(command_now_);    
+                command_pub.publish(command_now_); 
                 
                 break;
             }
             
             case mission_fsm_::hold:{
-                if(isHold){
+                if(isTakeoff2Hold){
+                    isTakeoff2Hold = false;
                     holdtime_start = ros::Time::now().sec;
-                    isHold = false;
+                    
+                    command_now_.mode = prometheus_msgs::ControlCommand::hold;   
+                    command_now_.reference_state.position_ref[0] = home_position_[0];
+                    command_now_.reference_state.position_ref[1] = home_position_[1];
+                    command_now_.reference_state.position_ref[2] = takeoff_height_ + home_position_[2];
+                    command_now_.reference_state.yaw_ref = hone_yaw_;
+
+                    std::cout << "      takeoff to hold, the hold target is " <<  home_position_[0] << ", " << home_position_[1] << ", " 
+                                       << takeoff_height_ + home_position_[2] << ", " << hone_yaw_*57.3<< std::endl;                    
                 }
+                if(isMove2Hold)
+                {
+                    isMove2Hold = false;
+                    holdtime_start = ros::Time::now().sec;
+                    
+                    command_now_.mode = prometheus_msgs::ControlCommand::hold;   
+                    command_now_.reference_state.position_ref[0] = final_goal_.coordinate[0];
+                    command_now_.reference_state.position_ref[1] = final_goal_.coordinate[1];
+                    command_now_.reference_state.position_ref[2] = final_goal_.coordinate[2];
+                    // command_now_.reference_state.yaw_ref = hone_yaw_;
+
+                    std::cout << "      move to hold, the hold target is " <<  final_goal_.coordinate.transpose() << std::endl;          
+                }
+
                 holdtime = ros::Time::now().sec;
 
-                if((holdtime - holdtime_start) > hover_max_)//超过最大悬停时间，降落
+                if (all_goals_.empty())//无目标点，悬停xs，降落
                 {
-                    ROS_INFO("HOLD to LAND, over time");
-                    mission_cmd_ = mission_fsm_::land;
-                    command_now_.header.stamp = ros::Time::now();
-                    command_now_.mode = prometheus_msgs::ControlCommand::land;
-                }
-                else if (goalpoints_.empty())//无目标点，悬停5s，降落
-                {        
                     if((holdtime - holdtime_start) > hover_duration_){
                         ROS_INFO("HOLD to LAND, no goal");
                         ROS_INFO("The mission is over ......");
@@ -231,72 +291,51 @@ void MissionRtk::run()
                         command_now_.mode = prometheus_msgs::ControlCommand::hold;    
                     }
                 }
-                else if (!goalpoints_.empty() && (holdtime - holdtime_start) > hover_duration_)//有目标点，悬停时间大于5s，进入move
-                {
+                else if(!all_goals_.empty() && (holdtime - holdtime_start) > hover_duration_){//有目标点，悬停时间，进入move
                     ROS_INFO("HOLD to MOVE");
                     mission_cmd_ = mission_fsm_::move;    isMove = true;
                     command_now_.header.stamp = ros::Time::now();
-                    command_now_.mode = prometheus_msgs::ControlCommand::move;
+                    command_now_.mode = prometheus_msgs::ControlCommand::move;                                    
                 }
-                else{
+                else{//悬停状态
                     command_now_.header.stamp = ros::Time::now();
-                    command_now_.mode = prometheus_msgs::ControlCommand::hold;                    
+                    command_now_.mode = prometheus_msgs::ControlCommand::hold;
                 }
-                
                 command_pub.publish(command_now_);
                 
                 break;
             }
 
             case mission_fsm_::move:{
-                if(isMove == true)//第一次进入move，目标点加上（减去）起点位置
+                if(isMove)//hold进入move，目标点加上（减去）起点位置
                 {
-                    //计算两个点的GPS坐标，进而转换成xyz，算出相对的目标xyz，再加上local的home位置
-                    //对目标点加上Home位置（局部XYZ）——相对
-                    //原因：起点位置的xyz，不是000
-                    double homeE, homeN;
-                    rtk2xy( home_lon_, home_lat_, homeE, homeN);//计算经纬度的ENU
-                    for(int  iter = 0; iter < goalpoints_.size(); iter++)
-                    {
-                        double goalE, goalN;
-                        rtk2xy(goalpoints_[iter].longitude, goalpoints_[iter].lantitude, goalE, goalN);//计算目标点经纬度的ENU
-
-                        goalpoints_[iter].point.x() = goalE - homeE + home_position_.x();
-                        goalpoints_[iter].point.y() = goalN - homeN + home_position_.y();
-                        goalpoints_[iter].point.z() = drone_state_.position[2];
-                        // std::cout << iter << "  "<<goalpoints_[iter].point.transpose() << std::endl;
-                    }
-                    // goal_ = goalpoints_.back();//获取目标集最新的点
-
-                    std::cout << "There are " << goalpoints_.size() << " goals" << std::endl;
                     isMove = false;
+                    std::cout << "      there are " << all_goals_.size() << " goals" << std::endl;
                 }
 
-                if (!goalpoints_.empty()){
+                if (!all_goals_.empty()){
                     //发送目标点
-                    if(goalpoints_.size() > 0 && isSendGoal)//防止vector尾部超出的部分
+                    if(all_goals_.size() > 0 && isSendGoal)//防止vector尾部超出的部分
                     {
                         isSendGoal = false;
                         ROS_INFO("MOVE, send goal");
-                        goal_ = goalpoints_.back();//获取目标集最新的点
+                        goal_ = all_goals_.back();//获取目标集最新的点
 
                         nav_msgs::Path path;
                         geometry_msgs::PoseStamped poses;
-                        poses.pose.position.x = goal_.point[0];
-                        poses.pose.position.y = goal_.point[1];
-                        poses.pose.position.z = goal_.point[2];
+                        poses.pose.position.x = goal_.coordinate[0];
+                        poses.pose.position.y = goal_.coordinate[1];
+                        poses.pose.position.z = goal_.coordinate[2];
                         path.poses.push_back(poses);
 
-                        poses.pose.position.x = goal_.max_vel;//最大速度
-                        poses.pose.position.y = goal_.max_acc;//最大加速度
+                        poses.pose.position.x = goal_.vel;//最大速度
+                        poses.pose.position.y = goal_.acc;//最大加速度
                         poses.pose.position.z = 0;//最大速度
 
                         path.poses.push_back(poses);
-
                         goal_pub.publish(path);    
-
-                        std::cout <<"The "<< goalsize_  - goalpoints_.size() << "th goal: " << goal_.point.transpose() 
-                                        <<  "   The max vel and acc are:  " << goal_.max_vel<< " " << goal_.max_acc<<std::endl;                 
+                        std::cout <<"       the "<< all_goals_size_  - all_goals_.size() << "th goal: " << goal_.coordinate.transpose() 
+                                        <<  "   The max vel and acc are:  " << goal_.vel<< " " << goal_.acc<<std::endl;                 
                     }            
                     
                     //没有避障模块
@@ -307,7 +346,8 @@ void MissionRtk::run()
                         command_now_.reference_state.move_mode  = prometheus_msgs::PositionReference::xyz_yaw;
                         // command_now_.reference_state.move_mode  = prometheus_msgs::PositionReference::vel_yaw;
                         // command_now_.reference_state.move_mode  = prometheus_msgs::PositionReference::xyz_vel_yaw;
-                        command_now_.reference_state.position_ref =  {goal_.point[0], goal_.point[1], goal_.point[2]};
+                        command_now_.reference_state.position_ref =  {goal_.coordinate[0], goal_.coordinate[1], goal_.coordinate[2]};
+
                         command_now_.reference_state.yaw_ref = drone_state_.attitude[2];                    
                     }
                     
@@ -317,17 +357,18 @@ void MissionRtk::run()
                         if (hasPlanningPoints)//当规划轨迹来了
                         {
                             hasPlanningPoints = false;
+                            command_now_.reference_state =  fastplanner_cmd_;//默认xyz_vel_yaw
                             command_now_.header.stamp = ros::Time::now();
                             command_now_.mode = prometheus_msgs::ControlCommand::move;
                             // command_now_.reference_state.move_mode  = prometheus_msgs::PositionReference::xyz_yaw;
                             // command_now_.reference_state.move_mode  = prometheus_msgs::PositionReference::vel_yaw;
                             command_now_.reference_state.move_mode  = prometheus_msgs::PositionReference::xyz_vel_yaw;
-                            command_now_.reference_state =  fastplanner_cmd_;
+                            // command_now_.reference_state.move_mode  = prometheus_msgs::PositionReference::trajectory;
                             command_now_.reference_state.yaw_ref = fastplanner_cmd_.yaw_ref;
                         }
                         else//悬停在当前位置
                         {
-                            std::cout << "no planning trajectory" << std::endl;
+                            std::cout << "      no planning trajectory" << std::endl;
                             // command_now_.header.stamp = ros::Time::now();
                             // command_now_.mode = prometheus_msgs::ControlCommand::move;
                             // // command_now_.reference_state.move_mode  = prometheus_msgs::PositionReference::xyz_yaw;
@@ -339,17 +380,17 @@ void MissionRtk::run()
                     }
 
                     //判断是否到达目标点，并且弹出
-                    if( sqrt(pow(drone_state_.position[0] - goal_.point[0], 2) + 
-                                            pow(drone_state_.position[1] - goal_.point[1], 2)) < 0.5)
+                    if( sqrt(pow(drone_state_.position[0] - goal_.coordinate[0], 2) + 
+                                            pow(drone_state_.position[1] - goal_.coordinate[1], 2)) < 0.5)
                     {
-                        goalpoints_.pop_back();
+                        all_goals_.pop_back();
                         isSendGoal = true;
                     }
                 
                 }
                 else{
                     ROS_INFO("MOVE to HOLD, no goal");
-                    mission_cmd_ = mission_fsm_::hold;    isHold = true;
+                    mission_cmd_ = mission_fsm_::hold;    isMove2Hold = true;
                     command_now_.header.stamp = ros::Time::now();
                     command_now_.mode = prometheus_msgs::ControlCommand::hold;
                 }
@@ -374,6 +415,7 @@ void MissionRtk::run()
                 break;
             }
         }
+        // last_mission_cmd_ = mission_cmd_;
 }
 
 /**
